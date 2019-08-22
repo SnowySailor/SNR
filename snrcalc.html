@@ -1,0 +1,98 @@
+<html>
+    <head>
+        <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+        <meta content="utf-8" http-equiv="encoding">
+        <script>
+            function calculateSkyNoisePerPixel() {
+                var diameter               = toFloat(getvalue('scope_diameter'))/1000;
+                var centralObstruction     = toFloat(getvalue('central_obstruction'));
+                var centralObstructionType = getvalue('central_obstruction_type');
+                var skyMag                 = toFloat(getvalue('sky_magnitude'));
+                var readNoise              = toFloat(getvalue('camera_read_noise'));
+                var darkCurrent            = toFloat(getvalue('camera_dark_current'));
+                var pixelSize              = toFloat(getvalue('camera_pixel_size'));
+                var focalLength            = toFloat(getvalue('scope_fl'));
+                var binning                = toFloat(getvalue('binning'));
+                var exposureTime           = toFloat(getvalue('exposure_time'));
+                var pixelArcseconds        = getArcsecondsPerPixel(focalLength, pixelSize);
+
+                var scopeArea = circleArea(diameter);
+                var centralObstructionArea = 0;
+                if (centralObstructionType == 'percent') { centralObstructionArea = scopeArea * (centralObstruction/100); }
+                else if (centralObstructionType == 'diameter') { centralObstructionArea = circleArea(centralObstruction/1000); }
+                var pixelArea = Math.pow(pixelArcseconds, 2);
+
+                return getPhotonsByMag(skyMag) * exposureTime * (scopeArea - centralObstructionArea) * pixelArea;
+            }
+
+            function calculateSNR() {
+                var readNoise         = toFloat(getvalue('camera_read_noise'));
+                var darkCurrent       = toFloat(getvalue('camera_dark_current'));
+                var pixelSize         = toFloat(getvalue('camera_pixel_size'));
+                var focalLength       = toFloat(getvalue('scope_fl'));
+                var quantumEfficiency = toFloat(getvalue('camera_qe'))/100;
+                var binning           = toFloat(getvalue('binning'));
+                var exposureTime      = toFloat(getvalue('exposure_time'));
+                var signal            = toFloat(getvalue('average_signal'));
+                var sensorX           = toFloat(getvalue('camera_x'));
+                var sensorY           = toFloat(getvalue('camera_y'));
+                
+                var pixels            = sensorX * sensorY;
+                var pixelArcseconds   = getArcsecondsPerPixel(focalLength, pixelSize);
+                var skyNoise          = calculateSkyNoisePerPixel();
+
+                var signalElectrons      = signal * exposureTime * Math.pow(pixelArcseconds, 2) * quantumEfficiency;
+                var readNoiseElectrons   = Math.pow(readNoise, 2);
+                var darkCurrentElectrons = darkCurrent * exposureTime;
+                var skyNoiseElectrons    = skyNoise * quantumEfficiency;
+
+                var totalSignal = signalElectrons * pixels;
+                var totalNoise  = Math.sqrt(pixels * (signalElectrons + readNoiseElectrons + darkCurrentElectrons + skyNoiseElectrons));
+                
+                return totalSignal/totalNoise;
+            }
+
+            function doMath() {
+                alert(calculateSNR());
+            }
+
+            function getPhotonsByMag(m) {
+                if (m == 0) { return Math.pow(10, 10); }
+                return getPhotonsByMag(0) * Math.pow(10, (-0.4 * m));
+            }
+
+            function getArcsecondsPerPixel(fl,ps) {
+                return (206.3 * ps)/fl;
+            }
+
+            function circleArea(d){return Math.pow(d/2, 2) * Math.PI;}
+            function getvalue(e){var e = document.getElementById(e);if(!e){return ""}return e.value;}
+            function toInt(s){return parseInt(s);}
+            function toFloat(s){return parseFloat(s);}
+        </script>
+    </head>
+    <body>
+        <input type="decimal" placeholder="Diameter" id="scope_diameter"/>Telescope diameter (mm)</br>
+        <input type="decimal" placeholder="Focal length" id="scope_fl"/>Telescope focal length (mm)</br>
+        <input type="decimal" placeholder="Central obstruction" value="0" id="central_obstruction"/><select id="central_obstruction_type">
+            <option value="percent">Percent</option>
+            <option value="diameter">Diameter</option>
+        </select>Telescope central obstruction</br>
+        <input type="decimal" placeholder="Sky magnitude" id="sky_magnitude"/>Sky magnitude (mag/arcsec^2)</br>
+        <input type="decimal" placeholder="Read noise" id="camera_read_noise"/>Sensor read noise (-e/px)</br>
+        <input type="decimal" placeholder="Dark current" id="camera_dark_current"/>Sensor dark current (-e/sec/px)</br>
+        <input type="decimal" placeholder="Pixel size" id="camera_pixel_size"/>Sensor pixel size (um)</br>
+        <input type="decimal" placeholder="Quantum efficiency" id="camera_qe"/>Sensor QE (%)</br>
+        <input type="decimal" placeholder="Sensor width" id="camera_x"/>Sensor width (px)</br>
+        <input type="decimal" placeholder="Sensor height" id="camera_y"/>Sensor height (px)</br>
+        <!-- <select id="binning"></br>
+            <option value="1">1x1</option>
+            <option value="2">2x2</option>
+            <option value="3">3x3</option>
+            <option value="4">4x4</option>
+        </select>Binning</br> -->
+        <input type="decimal" placeholder="Exposure" id="exposure_time"/>Exposure time (sec)</br>
+        <input type="decimal" placeholder="Average signal" id="average_signal"/>Average signal (photons/sec/arcsec^2)</br>
+        <button onclick="doMath();">go</button>
+    </body>
+</html>
