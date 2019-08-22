@@ -14,15 +14,15 @@
                 var focalLength            = toFloat(getvalue('scope_fl'));
                 var binning                = toFloat(getvalue('binning'));
                 var exposureTime           = toFloat(getvalue('exposure_time'));
-                var pixelArcseconds        = getArcsecondsPerPixel(focalLength, pixelSize);
+                var arcsecondsPerPixel     = getArcsecondsPerPixel(focalLength, pixelSize);
 
                 var scopeArea = circleArea(diameter);
                 var centralObstructionArea = 0;
                 if (centralObstructionType == 'percent') { centralObstructionArea = scopeArea * (centralObstruction/100); }
                 else if (centralObstructionType == 'diameter') { centralObstructionArea = circleArea(centralObstruction/1000); }
-                var pixelArea = Math.pow(pixelArcseconds, 2);
+                var pixelArcsecondArea = Math.pow(arcsecondsPerPixel, 2);
 
-                return getPhotonsByMag(skyMag) * exposureTime * (scopeArea - centralObstructionArea) * pixelArea;
+                return getPhotonsByMag(skyMag) * exposureTime * (scopeArea - centralObstructionArea) * pixelArcsecondArea;
             }
 
             function calculateSNR() {
@@ -33,21 +33,21 @@
                 var quantumEfficiency = toFloat(getvalue('camera_qe'))/100;
                 var binning           = toFloat(getvalue('binning'));
                 var exposureTime      = toFloat(getvalue('exposure_time'));
-                var signal            = toFloat(getvalue('average_signal'));
+                var avgSignal         = toFloat(getvalue('average_signal'));
                 var sensorX           = toFloat(getvalue('camera_x'));
                 var sensorY           = toFloat(getvalue('camera_y'));
                 
-                var pixels            = sensorX * sensorY;
-                var pixelArcseconds   = getArcsecondsPerPixel(focalLength, pixelSize);
-                var skyNoise          = calculateSkyNoisePerPixel();
+                var totalPixels        = sensorX * sensorY;
+                var arcsecondsPerPixel = getArcsecondsPerPixel(focalLength, pixelSize);
+                var skyNoise           = calculateSkyNoisePerPixel();
 
-                var signalElectrons      = signal * exposureTime * Math.pow(pixelArcseconds, 2) * quantumEfficiency;
+                var signalElectrons      = avgSignal * exposureTime * Math.pow(arcsecondsPerPixel, 2) * quantumEfficiency;
                 var readNoiseElectrons   = Math.pow(readNoise, 2);
                 var darkCurrentElectrons = darkCurrent * exposureTime;
                 var skyNoiseElectrons    = skyNoise * quantumEfficiency;
 
-                var totalSignal = signalElectrons * pixels;
-                var totalNoise  = Math.sqrt(pixels * (signalElectrons + readNoiseElectrons + darkCurrentElectrons + skyNoiseElectrons));
+                var totalSignal = signalElectrons * totalPixels;
+                var totalNoise  = Math.sqrt(totalPixels * (signalElectrons + readNoiseElectrons + darkCurrentElectrons + skyNoiseElectrons));
                 
                 return totalSignal/totalNoise;
             }
